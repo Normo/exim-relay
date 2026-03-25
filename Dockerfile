@@ -8,13 +8,12 @@ RUN apk --no-cache add exim tini && \
     ln -sf /dev/stderr /var/log/exim/reject && \
     chmod 0755 /usr/sbin/exim
 
-COPY exim.conf /etc/exim/exim.conf
+COPY exim.conf exim-smtps.conf /etc/exim/
 
-# Regardless of the permissions of the original `exim.conf` file in the build context,
-# ensure that the `/etc/exim/exim.conf` configuration file is not writable by the Exim user.
-# Otherwise, we'll get an Exim panic:
+# Regardless of the permissions of the original config files in the build context,
+# ensure that they are not writable by the Exim user. Otherwise, we'll get an Exim panic:
 # > Exim configuration file /etc/exim/exim.conf has the wrong owner, group, or mode
-RUN chmod 664 /etc/exim/exim.conf
+RUN chmod 664 /etc/exim/exim.conf /etc/exim/exim-smtps.conf
 
 USER exim
 EXPOSE 8025
@@ -32,4 +31,4 @@ ENV LOCAL_DOMAINS=@ \
     SMTP_USERNAME=
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["exim", "-bdf", "-q15m"]
+CMD ["sh", "-c", "exec exim -C /etc/exim/exim${SMARTHOST_PROTOCOL:+-${SMARTHOST_PROTOCOL}}.conf -bdf -q15m"]
